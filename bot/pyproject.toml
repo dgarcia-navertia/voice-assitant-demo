@@ -1,0 +1,23 @@
+[project]
+name = "navertia-voice-bot"
+version = "0.1.0"
+description = "Navertia Spanish voice booking assistant (Pipecat)"
+requires-python = ">=3.12"
+dependencies = [
+    "pipecat-ai[anthropic,deepgram,elevenlabs,google,openrouter,openai,runner,webrtc,websocket]==1.12.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.28",
+    "twilio>=9.0.0",
+    "python-dotenv>=1.0",
+    "loguru>=0.7",
+    "tzdata",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
