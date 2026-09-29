@@ -23,5 +23,6 @@ $cssVersion = @filemtime(__DIR__ . '/../../../public/static/app.css') ?: 0;
 </script>
 <link rel="stylesheet" href="/static/app.css?v=<?= $cssVersion ?>">
 <script defer src="/static/js/countries.js"></script>
+<script defer src="/static/js/phone-picker.js"></script>
 <script defer src="/static/js/alpine-3.14.9.min.js"></script>
 <script defer src="/static/js/app.js"></script>

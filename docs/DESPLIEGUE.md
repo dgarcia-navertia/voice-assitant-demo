@@ -47,9 +47,13 @@ antes de `php`) y **sin phpMyAdmin**. Cabeceras de seguridad (HSTS, `nosniff`, `
    fuertes, `INTERNAL_API_TOKEN` (`openssl rand -hex 32`), claves de Twilio / Deepgram / ElevenLabs / LLM,
    `HANDOFF_PHONE_NUMBER`, `APP_ENV=production`.
 3. `make prod-up` (equivale a `docker compose -f docker-compose.prod.yml --env-file .env up -d --build --wait`).
-4. Crear el primer usuario administrador: los seeders de desarrollo **no** se ejecutan en producción (traen una
-   contraseña pública). Inserta el admin a mano o ejecuta `StaffSeeder` una vez con un `SEED_USER_PASSWORD` propio y
-   cambia la contraseña desde *Mi cuenta*.
+4. Crear el primer administrador con **`make prod-admin`**. Los seeders de desarrollo **no** se ejecutan en
+   producción (traen una contraseña pública). El comando es interactivo: pide email, nombre y contraseña (mín. 12
+   caracteres, sin eco, confirmada dos veces) y la envía por stdin al script `calendar/src/scripts/create-admin.php`
+   dentro del contenedor `php`; nunca pasa por argumentos ni por el historial. Es idempotente: si el email ya existe,
+   actualiza nombre, rol (`admin`) y contraseña en lugar de duplicar. En desarrollo existe `make admin`.
+   El número de traspaso inicial sale de `HANDOFF_PHONE_NUMBER`; después se edita en el panel (*Ajustes → Traspaso*),
+   ver [CALENDARIO.md](CALENDARIO.md).
 5. En Twilio: webhook de voz del número -> `https://APP_DOMAIN/twilio/voice` (POST).
 
 Notas: las sesiones PHP viven en un `tmpfs` (se pierden al reiniciar el contenedor `php`); `WEBRTC` se desactiva

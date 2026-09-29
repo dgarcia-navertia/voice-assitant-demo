@@ -10,6 +10,7 @@ $settingsTabs = [
     '/commercials' => ['label' => 'Comerciales', 'roles' => ['admin', 'manager']],
     '/stores'      => ['label' => 'Tiendas',     'roles' => ['admin']],
     '/holidays'    => ['label' => 'Festivos',    'roles' => ['admin']],
+    '/settings'    => ['label' => 'Traspaso',    'roles' => ['admin']],
 ];
 $inSettings = false;
 foreach ($settingsTabs as $path => $_) {

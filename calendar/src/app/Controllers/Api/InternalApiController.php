@@ -341,6 +341,15 @@ class InternalApiController extends Controller
         $this->json(['call' => $call]);
     }
 
+    // ---- Ajustes -----------------------------------------------------------
+
+    /** Numero de traspaso vigente (editable por el admin; cae al entorno). */
+    public function handoffSetting(array $params = []): void
+    {
+        [$number, $source] = \App\Models\Setting::handoffNumber();
+        $this->json(['handoff_phone_number' => $number, 'source' => $source]);
+    }
+
     // ---- Utilidades ------------------------------------------------------
 
     private static function isValidDate(string $date): bool

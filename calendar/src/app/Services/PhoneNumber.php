@@ -29,4 +29,21 @@ final class PhoneNumber
         }
         return $dial . $num;
     }
+
+    /**
+     * Valida el numero de traspaso enviado por un formulario.
+     *
+     * @return array{0:?string,1:?string} [numero normalizado, error]
+     */
+    public static function validateHandoff(string $input): array
+    {
+        $clean = self::clean($input);
+        if ($clean === '') {
+            return [null, 'El número de traspaso es obligatorio.'];
+        }
+        if (!self::isE164($clean)) {
+            return [null, 'Número no válido. Usa el formato internacional, por ejemplo +34612345678.'];
+        }
+        return [$clean, null];
+    }
 }

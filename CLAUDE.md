@@ -24,6 +24,8 @@ make test              # test-php + test-bot + test-e2e
 make logs S=bot        # logs
 make css               # recompila Tailwind tras tocar vistas/CSS
 make tunnel            # túnel HTTPS (cloudflared) al bot para Twilio en local
+make admin             # crea/actualiza un admin (dev, interactivo)
+make prod-admin        # ídem en producción (primer admin; ver DESPLIEGUE.md)
 make prod-up           # producción (Caddy + TLS), ver docs/DESPLIEGUE.md
 ```
 

@@ -20,6 +20,7 @@ Los errores MUST ser `{"error": "<mensaje>"}` con 4xx.
 - `POST /mcp/transcripts/batch` `{sid, turns:[{role:"user"|"assistant", transcript_text, turn_index, interrupted?}]}` ->
   201 `{saved:n}`. (`POST /mcp/transcripts` de un turno tambien existe.)
 - `POST /mcp/leads` `{call_sid?, name?, phone, store_id?, reason?, source?, transferred?}` -> 201 `{lead:{id,...}}`.
+- `GET /mcp/settings/handoff` -> `{handoff_phone_number, source:"db"|"env"}` (valor del panel; cae al entorno).
 - `POST /mcp/calls/status` `{call_sid, status, to?, from?, direction?, duration?, error?}` -> 200 `{call:{...}}` (upsert).
   `status` in queued|ringing|in-progress|completed|failed|busy|no-answer|canceled.
 
@@ -39,3 +40,11 @@ No hay PHPMailer, Mailpit ni SMS.
 
 ### Requirement: Seed & auth
 Login con roles admin/manager/commercial. Usuarios sembrados documentados en `docs/CREDENTIALS.md`.
+
+### Requirement: Editable handoff number
+Admin-only screen `/settings` edits `handoff_phone_number` (E.164, CSRF) stored in `settings` with `updated_by`/`updated_at`.
+The bot MUST fetch it at handoff time (short cache) and fall back to `HANDOFF_PHONE_NUMBER` with a warning if the API fails.
+
+### Requirement: Admin bootstrap
+`make prod-admin` creates or updates (idempotent by email) an admin via `scripts/create-admin.php`; the password is read
+without echo, confirmed twice, and passed via stdin only.

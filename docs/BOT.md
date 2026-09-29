@@ -61,10 +61,13 @@ Los errores se devuelven al LLM como `{"ok": false, "message": "..."}`, nunca co
 
 ### Transferencia real (`commercial_handoff`)
 
+0. El número se pide a PHP **en cada traspaso** (`GET /mcp/settings/handoff`, caché de 45 s, así una edición del
+   admin se aplica en menos de un minuto). Si la API falla o devuelve vacío, se usa `HANDOFF_PHONE_NUMBER` del entorno y
+   se registra un aviso en el log.
 1. Se crea el *lead* (`POST /mcp/leads`) **primero**, para no perderlo si la transferencia falla.
 2. Se actualiza la llamada viva con TwiML (`calls(sid).update(twiml=…)`): un `<Say language="es-ES">` opcional (modo
    *warm*), `<Dial timeout="30" callerId="TWILIO_PHONE_NUMBER">HANDOFF_PHONE_NUMBER</Dial>` y un `<Say>` de reserva si
-   nadie contesta. Solo funciona si el `call_sid` empieza por `CA` (no en WebRTC) y hay `HANDOFF_PHONE_NUMBER`.
+   nadie contesta. Solo funciona si el `call_sid` empieza por `CA` (no en WebRTC) y hay algún número (PHP o `HANDOFF_PHONE_NUMBER`).
 3. `auto_hang_up` del serializador está **desactivado a propósito**: si no, colgaría también la llamada recién
    transferida. El bot cuelga por REST al terminar salvo que la llamada se haya transferido.
 

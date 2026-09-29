@@ -18,6 +18,7 @@ use App\Controllers\LeadController;
 use App\Controllers\CallController;
 use App\Controllers\DialOutController;
 use App\Controllers\HealthController;
+use App\Controllers\SettingsController;
 use App\Controllers\Api\InternalApiController;
 use App\Middlewares\AuthMiddleware;
 use App\Middlewares\AdminMiddleware;
@@ -94,6 +95,10 @@ $router->add('GET',    '/holidays',      [HolidayController::class, 'index'],   
 $router->add('POST',   '/holidays',      [HolidayController::class, 'store'],   $admin);
 $router->add('DELETE', '/holidays/{id}', [HolidayController::class, 'destroy'], $admin);
 
+// Ajustes globales (admin): numero de traspaso
+$router->add('GET',  '/settings',         [SettingsController::class, 'index'],         $admin);
+$router->add('POST', '/settings/handoff', [SettingsController::class, 'updateHandoff'], $admin);
+
 // Clientes, leads
 $router->add('GET',  '/clients', [ClientController::class, 'index'], $auth);
 $router->add('POST', '/clients', [ClientController::class, 'store'], $auth);
@@ -117,6 +122,7 @@ $router->add('POST', '/mcp/appointments',     [InternalApiController::class, 'cr
 $router->add('POST', '/mcp/transcripts',      [InternalApiController::class, 'createTranscript'], $api);
 $router->add('POST', '/mcp/transcripts/batch', [InternalApiController::class, 'createTranscriptBatch'], $api);
 $router->add('POST', '/mcp/leads',            [InternalApiController::class, 'createLead'],   $api);
+$router->add('GET',  '/mcp/settings/handoff', [InternalApiController::class, 'handoffSetting'], $api);
 $router->add('POST', '/mcp/calls/status',     [InternalApiController::class, 'callStatus'],   $api);
 
 return $router;

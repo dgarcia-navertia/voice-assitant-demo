@@ -25,6 +25,7 @@ tests/Unit/     PHPUnit
 | `/calls`, `/calls/{sid}` | Historial y transcripción | todos |
 | `/leads` | Contactos derivados a comercial | todos |
 | `/users`, `/stores`, `/holidays` | Ajustes | admin |
+| `/settings` | **Traspaso**: número al que se transfieren las llamadas | solo admin |
 | `/commercials` (+ overrides) | Comerciales y horarios | admin, manager (su tienda) |
 | `/account` | Cambio de contraseña | todos |
 
@@ -39,6 +40,13 @@ que aparece la transcripción (enlace *Ver transcripción*). Estados: `queued`, 
 
 Las banderas son SVG locales (`static/flags/`, del paquete MIT `flag-icons`) y los nombres salen de
 `Intl.DisplayNames('es')`: no hay CDN.
+
+### Número de traspaso (`/settings`)
+
+Solo el rol admin (manager y comercial reciben 403 y no ven la pestaña). Usa el mismo selector de prefijo con
+banderas y la misma validación E.164 que Dial Out, con CSRF. Se guarda en la tabla clave/valor `settings`
+(`handoff_phone_number`) junto con `updated_by` y `updated_at` (migración `settings_audit`). El seeder lo inicializa
+desde `HANDOFF_PHONE_NUMBER` sin pisar ediciones posteriores. Si no hay valor guardado, la API devuelve el del entorno.
 
 ## API interna (`/mcp/*`)
 
@@ -55,6 +63,7 @@ tipo `mcp` en `api_keys` (mismo patrón que la referencia). Sin token: `401 {"er
 | `POST /mcp/transcripts/batch` | `sid`, `turns[{role, transcript_text, turn_index, interrupted?}]` | 201 `{saved}` (idempotente por `sid`) |
 | `POST /mcp/transcripts` | un turno | 201 |
 | `POST /mcp/leads` | `phone`, `name?`, `store_id?`, `reason?`, `call_sid?`, `source?`, `transferred?` | 201 `{lead}` |
+| `GET /mcp/settings/handoff` | — | `{handoff_phone_number, source: "db"\|"env"}` |
 | `POST /mcp/calls/status` | `call_sid`, `status`, `to?`, `from?`, `direction?`, `duration?`, `error?` | `{call}` (upsert) |
 
 La elección de comercial y la comprobación de hueco se repiten **dentro de la transacción** de reserva

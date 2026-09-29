@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help env up down restart build ps logs shell-php composer-install css migrate seed fresh \
-        test test-php test-e2e test-bot tunnel prod-build prod-up prod-down prod-logs prod-ps prod-migrate
+        test test-php test-e2e test-bot tunnel prod-build prod-up prod-down prod-logs prod-ps prod-migrate prod-admin admin
 
 DC      = docker compose
 DC_PROD = docker compose -f docker-compose.prod.yml --env-file .env
@@ -53,6 +53,9 @@ fresh: ## Borra la base y la recrea (migrate + seed)
 	$(DC) exec -T db sh -c 'mariadb -uroot -p"$$MARIADB_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS \`$$MARIADB_DATABASE\`; CREATE DATABASE \`$$MARIADB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON \`$$MARIADB_DATABASE\`.* TO \"$$MARIADB_USER\"@\"%\";"'
 	$(MAKE) migrate seed
 
+admin: ## Crea/actualiza un admin en el stack de DESARROLLO (interactivo)
+	./scripts/create-admin.sh dev
+
 # --- Tests -------------------------------------------------------------------------
 test: test-php test-bot test-e2e ## Toda la bateria (php + bot + e2e)
 
@@ -88,3 +91,6 @@ prod-ps: ## Estado de produccion
 
 prod-migrate: ## Relanza las migraciones en produccion
 	$(DC_PROD) run --rm migrate
+
+prod-admin: ## Crea/actualiza el primer admin en PRODUCCION (interactivo, idempotente)
+	./scripts/create-admin.sh prod

@@ -20,50 +20,7 @@ $statusLabels = [
         <label for="dial-phone" class="label">Teléfono a llamar</label>
 
         <div class="flex flex-col sm:flex-row gap-3 sm:items-stretch">
-            <?php /* Pildora de cristal: selector de prefijo + numero */ ?>
-            <div class="glass-strong rounded-full flex items-center flex-1 min-h-[3.25rem] relative"
-                 :class="phone && !valid ? 'ring-2 ring-red-500/60' : ''">
-
-                <div class="relative" @keydown.escape.window="open = false" @click.outside="open = false">
-                    <button type="button" @click="toggle()" data-testid="dial-country-toggle"
-                            class="flex items-center gap-2 h-[3.25rem] pl-4 pr-3 rounded-l-full hover:bg-brand-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                            :aria-expanded="open" aria-haspopup="listbox" aria-label="Prefijo del país">
-                        <img :src="flagUrl(country.iso)" alt="" class="w-6 h-[18px] rounded-[3px] object-cover shadow-sm">
-                        <span class="font-semibold text-gray-900" x-text="country.dial" data-testid="dial-country-code"></span>
-                        <?= Icon::svg('down', 'w-4 h-4 text-gray-400') ?>
-                    </button>
-
-                    <div x-cloak x-show="open" x-transition.opacity
-                         class="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-3rem)] glass-pop rounded-2xl z-30 overflow-hidden">
-                        <div class="p-2 border-b border-gray-200/70">
-                            <input type="search" x-model="query" x-ref="search" data-testid="dial-country-search"
-                                   placeholder="Buscar país o prefijo…" autocomplete="off"
-                                   class="input !min-h-[2.5rem] !text-[15px]" aria-label="Buscar país">
-                        </div>
-                        <ul class="max-h-72 overflow-y-auto py-1" role="listbox" data-testid="dial-country-list">
-                            <template x-for="c in filtered" :key="c.iso">
-                                <li role="option" :aria-selected="c.iso === country.iso">
-                                    <button type="button" @click="select(c)"
-                                            :data-iso="c.iso"
-                                            class="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-brand-500/10"
-                                            :class="c.iso === country.iso ? 'bg-brand-500/15' : ''">
-                                        <img :src="flagUrl(c.iso)" alt="" loading="lazy" class="w-6 h-[18px] rounded-[3px] object-cover shadow-sm">
-                                        <span class="flex-1 truncate text-gray-900" x-text="c.name"></span>
-                                        <span class="text-gray-500 text-sm tabular-nums" x-text="c.dial"></span>
-                                    </button>
-                                </li>
-                            </template>
-                            <li x-show="filtered.length === 0" class="px-4 py-3 text-sm text-gray-500">Sin resultados</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <span class="w-px h-6 bg-gray-300/70" aria-hidden="true"></span>
-
-                <input id="dial-phone" type="tel" inputmode="tel" autocomplete="tel-national"
-                       x-model="phone" data-testid="dial-phone" placeholder="612 345 678"
-                       class="flex-1 min-w-0 h-[3.25rem] bg-transparent border-0 text-lg text-gray-900 placeholder:text-gray-400 px-4 rounded-r-full focus:ring-0">
-            </div>
+            <?php $phoneInputId = 'dial-phone'; $phoneTestId = 'dial-phone'; require __DIR__ . '/../partials/phone-pill.php'; ?>
 
             <button type="submit" data-testid="dial-submit" :disabled="!valid || busy"
                     class="btn btn-accent min-h-[3.25rem] px-8 text-base disabled:opacity-50 disabled:cursor-not-allowed">
@@ -142,45 +99,20 @@ document.addEventListener('alpine:init', () => {
         'completed': 'Completada', 'failed': 'Fallida', 'busy': 'Ocupado',
         'no-answer': 'Sin respuesta', 'canceled': 'Cancelada',
     };
+    // Mezcla el estado del selector compartido (con sus getters) en el componente.
+    const withPicker = (obj) => Object.defineProperties(obj, Object.getOwnPropertyDescriptors(nvPhonePicker()));
     const BAD = ['failed', 'busy', 'no-answer', 'canceled'];
     const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-    Alpine.data('dialOut', (csrf) => ({
+    Alpine.data('dialOut', (csrf) => withPicker({
         csrf,
-        countries: [],
-        country: { iso: 'ES', name: 'España', dial: '+34' },
-        open: false, query: '', phone: '',
         busy: false, error: '', call: null, timer: null, polls: 0,
         steps: [
             { key: 'queued', label: 'En cola' }, { key: 'ringing', label: 'Sonando' },
             { key: 'in-progress', label: 'En curso' }, { key: 'completed', label: 'Finalizada' },
         ],
 
-        init() {
-            const names = new Intl.DisplayNames(['es'], { type: 'region' });
-            const list = (window.NV_COUNTRIES || []).map(([iso, dial]) => ({ iso, dial, name: names.of(iso) || iso }));
-            list.sort((a, b) => a.name.localeCompare(b.name, 'es'));
-            this.countries = list;
-            this.country = list.find((c) => c.iso === 'ES') || this.country;
-        },
-        flagUrl(iso) { return '/static/flags/' + iso.toLowerCase() + '.svg'; },
-        toggle() {
-            this.open = !this.open;
-            if (this.open) { this.query = ''; this.$nextTick(() => this.$refs.search && this.$refs.search.focus()); }
-        },
-        select(c) { this.country = c; this.open = false; },
-        get filtered() {
-            const q = norm(this.query.trim());
-            if (!q) { return this.countries; }
-            return this.countries.filter((c) =>
-                norm(c.name).includes(q) || c.dial.includes(q) || c.dial.replace('+', '').startsWith(q.replace('+', '')) || c.iso.toLowerCase() === q);
-        },
-        get e164() {
-            const raw = this.phone.replace(/[\s\-().]/g, '');
-            if (raw.startsWith('+')) { return raw; }
-            return this.country.dial + raw.replace(/^0+/, '');
-        },
-        get valid() { return /^\+[1-9]\d{6,14}$/.test(this.e164); },
+        init() { this.initPicker(); },
 
         get terminal() { return !!(this.call && this.call.terminal); },
         get live() { return !!this.call && !this.terminal; },

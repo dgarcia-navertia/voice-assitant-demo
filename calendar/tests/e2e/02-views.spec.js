@@ -19,6 +19,7 @@ const VIEWS = [
     ['/stores', 'Tiendas'],
     ['/stores/create', null],
     ['/holidays', 'Festivos'],
+    ['/settings', 'Traspaso'],
     ['/account', null],
 ];
 
