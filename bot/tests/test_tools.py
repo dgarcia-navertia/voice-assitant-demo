@@ -124,3 +124,33 @@ async def test_handoff_requires_number_and_telephony(ctx, settings):
     ctx.call_sid = SID
     ctx.settings = type(settings)(**{**settings.__dict__, "handoff_phone_number": ""})
     assert (await handlers.commercial_handoff(ctx, reason="x"))["ok"] is False
+
+
+async def test_handoff_uses_number_from_php(ctx, php_recorder, fake_rest):
+    php_recorder.add("GET", "/mcp/settings/handoff", 200, {"handoff_phone_number": "+34611000111"})
+    php_recorder.add("POST", "/mcp/leads", 201, {"lead": {"id": 1}})
+    res = await handlers.commercial_handoff(ctx, reason="x")
+    assert res["ok"] and res["transferred"]
+    twiml = fake_rest.updates[0][1]["twiml"]
+    assert "+34611000111" in twiml and "+34600999888" not in twiml
+
+
+async def test_handoff_falls_back_to_env_when_php_fails(ctx, php_recorder, fake_rest):
+    php_recorder.add("GET", "/mcp/settings/handoff", 500, {"error": "boom"})
+    php_recorder.add("POST", "/mcp/leads", 201, {"lead": {"id": 1}})
+    res = await handlers.commercial_handoff(ctx, reason="x")
+    assert res["ok"] and "+34600999888" in fake_rest.updates[0][1]["twiml"]
+
+
+async def test_handoff_number_is_cached_briefly(ctx, php_recorder, fake_rest):
+    php_recorder.add("GET", "/mcp/settings/handoff", 200, {"handoff_phone_number": "+34611000111"})
+    php_recorder.add("POST", "/mcp/leads", 201, {"lead": {"id": 1}})
+    await handlers.commercial_handoff(ctx, reason="x")
+    await handlers.commercial_handoff(ctx, reason="y")
+    fetches = [r for r in php_recorder.requests if r.url.path == "/mcp/settings/handoff"]
+    assert len(fetches) == 1
+    # after the TTL it is fetched again (picks up an admin edit)
+    handlers._handoff_cache = (handlers._handoff_cache[0], 0.0)
+    php_recorder.add("GET", "/mcp/settings/handoff", 200, {"handoff_phone_number": "+34622000222"})
+    await handlers.commercial_handoff(ctx, reason="z")
+    assert "+34622000222" in fake_rest.updates[-1][1]["twiml"]

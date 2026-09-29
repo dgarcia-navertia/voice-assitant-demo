@@ -87,3 +87,11 @@ def php_recorder():
 @pytest.fixture
 def php(php_recorder):
     return PhpApiClient("http://php", "secret-token", transport=httpx.MockTransport(php_recorder))
+
+
+@pytest.fixture(autouse=True)
+def _reset_handoff_cache():
+    from src.tools import handlers
+    handlers.reset_handoff_cache()
+    yield
+    handlers.reset_handoff_cache()

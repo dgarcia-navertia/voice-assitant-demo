@@ -56,6 +56,11 @@ class PhpApiClient:
     async def stores(self) -> list[dict[str, Any]]:
         return (await self._request("GET", "/mcp/stores")).get("stores", [])
 
+    async def handoff_number(self) -> str:
+        """Current handoff number, editable by an admin in the PHP panel."""
+        data = await self._request("GET", "/mcp/settings/handoff")
+        return str(data.get("handoff_phone_number") or "").strip()
+
     async def availability(self, store_id: int, date: str, service_id: int | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"store_id": store_id, "date": date}
         if service_id:

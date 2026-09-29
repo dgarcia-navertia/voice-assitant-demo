@@ -7,6 +7,7 @@ Errors never raise into the pipeline: they are returned as
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -165,6 +166,32 @@ async def book_appointment(
     }
 
 
+HANDOFF_CACHE_TTL = 45.0
+_handoff_cache: tuple[str, float] | None = None
+
+
+def reset_handoff_cache() -> None:
+    global _handoff_cache
+    _handoff_cache = None
+
+
+async def resolve_handoff_number(ctx: ToolContext) -> str:
+    """Handoff number at handoff time: PHP value (short cache), else HANDOFF_PHONE_NUMBER."""
+    global _handoff_cache
+    now = time.monotonic()
+    if _handoff_cache and _handoff_cache[1] > now:
+        return _handoff_cache[0]
+    try:
+        number = await ctx.php.handoff_number()
+        if number:
+            _handoff_cache = (number, now + HANDOFF_CACHE_TTL)
+            return number
+        logger.warning("PHP returned an empty handoff number; using HANDOFF_PHONE_NUMBER from env")
+    except PhpApiError as exc:
+        logger.warning("Could not fetch handoff number from PHP ({}); using HANDOFF_PHONE_NUMBER from env", exc.message)
+    return ctx.settings.handoff_phone_number
+
+
 async def commercial_handoff(
     ctx: ToolContext,
     reason: Any = None,
@@ -174,7 +201,7 @@ async def commercial_handoff(
     **_: Any,
 ) -> dict[str, Any]:
     """Real transfer: update the live Twilio call with <Dial> + record a lead."""
-    number = ctx.settings.handoff_phone_number
+    number = await resolve_handoff_number(ctx)
     if not number:
         return _fail("No hay un número de asesor configurado. Ofrece que le llamarán más tarde.")
     if not ctx.is_telephony:
