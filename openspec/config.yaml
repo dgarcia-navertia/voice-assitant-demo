@@ -1,0 +1,16 @@
+schema: spec-driven
+
+context: |
+  Monorepo de una demo de asistente de reservas por voz en espanol para Navertia.
+  - calendar/: PHP 8.4 MVC propio (sin framework) + Apache + MariaDB + Phinx + Tailwind.
+  - bot/: Pipecat 1.12.0 (Twilio Media Streams + SmallWebRTC), FastAPI, uv. SIN pipecat-flows.
+  Un unico .env en la raiz. Docs en espanol, codigo e identificadores en ingles.
+  Tests: PHPUnit (calendar/src/tests/Unit), Playwright (calendar/tests), pytest (bot/tests).
+  Nunca se hacen llamadas reales de Twilio en tests ni en verificacion.
+
+strict_tdd: false
+
+testing:
+  php: make test-php
+  e2e: make test-e2e
+  bot: make test-bot

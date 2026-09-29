@@ -1,0 +1,15 @@
+.env
+*.env.local
+docker/db-data/
+db-data/
+bot/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+calendar/src/vendor/
+calendar/tests/node_modules/
+calendar/tests/results/
+calendar/bin/
+node_modules/
+.phpunit.result.cache
+*.log
