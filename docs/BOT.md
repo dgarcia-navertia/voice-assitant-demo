@@ -61,6 +61,12 @@ Los errores se devuelven al LLM como `{"ok": false, "message": "..."}`, nunca co
 
 ### Transferencia real (`commercial_handoff`)
 
+Guarda previa: si otra herramienta ha fallado (`ok: false`) **en el mismo turno** del usuario, el traspaso se
+rechaza y se pide al LLM que explique el problema y **pregunte** si quiere que le pasen; con el "sí" (turno nuevo)
+se transfiere. Evita que el modelo transfiera sin preguntar ante un error (p. ej. sin tiendas o con la API caída).
+El turno se cuenta en `tools/__init__.py:_dispatch` a partir de los mensajes `user` del contexto. Si la persona pide
+hablar con alguien, sin fallo previo, se transfiere directamente.
+
 0. El número se pide a PHP **en cada traspaso** (`GET /mcp/settings/handoff`, caché de 45 s, así una edición del
    admin se aplica en menos de un minuto). Si la API falla o devuelve vacío, se usa `HANDOFF_PHONE_NUMBER` del entorno y
    se registra un aviso en el log.

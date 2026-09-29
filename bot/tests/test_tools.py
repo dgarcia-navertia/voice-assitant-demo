@@ -154,3 +154,41 @@ async def test_handoff_number_is_cached_briefly(ctx, php_recorder, fake_rest):
     php_recorder.add("GET", "/mcp/settings/handoff", 200, {"handoff_phone_number": "+34622000222"})
     await handlers.commercial_handoff(ctx, reason="z")
     assert "+34622000222" in fake_rest.updates[-1][1]["twiml"]
+
+
+class _Params:
+    def __init__(self, arguments, messages):
+        self.arguments = arguments
+        self.context = type("Ctx", (), {"get_messages": lambda _s: messages})()
+        self.result = None
+
+    async def result_callback(self, result):
+        self.result = result
+
+
+async def test_handoff_refused_in_same_turn_as_tool_failure(ctx, php_recorder, fake_rest):
+    from src.tools import _dispatch
+
+    php_recorder.add("POST", "/mcp/leads", 201, {"lead": {"id": 7}})
+    turn1 = [{"role": "user", "content": "inicio"}, {"role": "user", "content": "Quiero cita"}]
+    info = _Params({}, turn1)
+    await _dispatch(handlers.get_company_info, ctx, info)  # PHP 404 -> ok False
+    assert info.result["ok"] is False
+
+    blocked = _Params({"reason": "fallo"}, turn1)
+    await _dispatch(handlers.commercial_handoff, ctx, blocked)
+    assert blocked.result["ok"] is False and not fake_rest.updates and ctx.transferred is False
+
+    # The caller answers "sí" -> new user turn -> the transfer goes through.
+    ok = _Params({"reason": "fallo"}, turn1 + [{"role": "user", "content": "Sí, pásame"}])
+    await _dispatch(handlers.commercial_handoff, ctx, ok)
+    assert ok.result["ok"] is True and fake_rest.updates and ctx.transferred is True
+
+
+async def test_handoff_on_request_without_failure_is_immediate(ctx, php_recorder, fake_rest):
+    from src.tools import _dispatch
+
+    php_recorder.add("POST", "/mcp/leads", 201, {"lead": {"id": 8}})
+    p = _Params({"reason": "quiere hablar con una persona"}, [{"role": "user", "content": "Pásame con alguien"}])
+    await _dispatch(handlers.commercial_handoff, ctx, p)
+    assert p.result["ok"] is True and ctx.transferred is True

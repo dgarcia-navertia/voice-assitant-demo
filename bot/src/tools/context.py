@@ -21,6 +21,10 @@ class ToolContext:
     direction: str = "inbound"  # inbound | outbound | webrtc
     transferred: bool = False
     booked_appointment_id: int | None = None
+    # User turns seen so far, and the turn in which a tool last failed. A handoff
+    # in that same turn is refused: the caller must be asked first (see handlers).
+    user_turns: int = 0
+    tool_failed_turn: int | None = None
     _now: datetime | None = field(default=None, repr=False)
 
     def now(self) -> datetime:

@@ -201,6 +201,11 @@ async def commercial_handoff(
     **_: Any,
 ) -> dict[str, Any]:
     """Real transfer: update the live Twilio call with <Dial> + record a lead."""
+    if ctx.tool_failed_turn is not None and ctx.tool_failed_turn == ctx.user_turns:
+        # The LLM tends to transfer straight after a tool error, without asking.
+        logger.info("Handoff refused: a tool failed in this same turn and the caller was not asked")
+        return _fail("No transfieras todavía. Di con naturalidad que ahora mismo hay un problema técnico y "
+                     "pregunta si quiere que le pases con un asesor. Transfiere solo si responde que sí.")
     number = await resolve_handoff_number(ctx)
     if not number:
         return _fail("No hay un número de asesor configurado. Ofrece que le llamarán más tarde.")

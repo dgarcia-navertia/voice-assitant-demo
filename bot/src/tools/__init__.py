@@ -84,8 +84,16 @@ def register_tools(llm: Any, ctx: ToolContext) -> None:
 
 
 async def _dispatch(fn: Any, ctx: ToolContext, params: FunctionCallParams) -> None:
+    if params.context is not None:
+        ctx.user_turns = count_user_turns(params.context.get_messages())
     result = await fn(ctx, **(params.arguments or {}))
+    if isinstance(result, dict) and result.get("ok") is False and fn is not handlers.commercial_handoff:
+        ctx.tool_failed_turn = ctx.user_turns
     await params.result_callback(result)
+
+
+def count_user_turns(messages: list[Any]) -> int:
+    return sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "user")
 
 
 __all__ = ["ToolContext", "build_tools_schema", "register_tools", "TOOL_HANDLERS"]
