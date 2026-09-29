@@ -48,7 +48,7 @@ antes de `php`) y **sin phpMyAdmin**. Cabeceras de seguridad (HSTS, `nosniff`, `
    `HANDOFF_PHONE_NUMBER`, `APP_ENV=production`.
 3. `make prod-up` (equivale a `docker compose -f docker-compose.prod.yml --env-file .env up -d --build --wait`).
 4. Crear el primer administrador con **`make prod-admin`**. Los seeders de desarrollo **no** se ejecutan en
-   producción (traen una contraseña pública). El comando es interactivo: pide email, nombre y contraseña (mín. 12
+   producción (traen una contraseña pública). El comando es interactivo: pide email, nombre y contraseña (12-24
    caracteres, sin eco, confirmada dos veces) y la envía por stdin al script `calendar/src/scripts/create-admin.php`
    dentro del contenedor `php`; nunca pasa por argumentos ni por el historial. Es idempotente: si el email ya existe,
    actualiza nombre, rol (`admin`) y contraseña en lugar de duplicar. En desarrollo existe `make admin`.

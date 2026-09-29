@@ -19,7 +19,7 @@ esac
 
 read -r -p "Email del administrador: " ADMIN_EMAIL
 read -r -p "Nombre: " ADMIN_NAME
-read -r -s -p "Contraseña (mín. 12 caracteres): " PW1; echo
+read -r -s -p "Contraseña (12 a 24 caracteres): " PW1; echo
 read -r -s -p "Repite la contraseña: " PW2; echo
 [ "$PW1" = "$PW2" ] || { echo "Las contraseñas no coinciden." >&2; exit 1; }
 unset PW2
