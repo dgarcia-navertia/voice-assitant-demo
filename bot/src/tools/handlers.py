@@ -246,3 +246,17 @@ async def commercial_handoff(
     ctx.transferred = True
     return {"ok": True, "transferred": True, "lead_id": lead_id,
             "message": "Transferencia en curso. No digas nada más."}
+
+
+FAREWELL = "Gracias por llamar a Navertia. ¡Que tengas un buen día!"
+
+
+async def end_call(ctx: ToolContext, **_: Any) -> dict[str, Any]:
+    """Mark the call as finished; `_dispatch` then speaks FAREWELL and hangs up."""
+    if ctx.transferred:
+        return _fail("La llamada ya se ha transferido. No digas nada más.")
+    if ctx.say_and_hang_up is None:
+        return _fail("No puedo colgar desde aquí. Despídete con amabilidad.")
+    ctx.ended = True
+    logger.info("Caller needs nothing else: ending call {}", ctx.call_sid)
+    return {"ok": True, "hang_up": True, "message": "Llamada finalizada. No digas nada más."}

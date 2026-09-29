@@ -110,6 +110,7 @@ async def run_pipeline(
         await worker.queue_frames([TTSSpeakFrame(text), EndFrame()])
 
     idle = IdleController(max_retries=settings.idle_max_retries, say=say, say_and_hang_up=say_and_hang_up)
+    ctx.say_and_hang_up = say_and_hang_up  # used by the end_call tool
 
     @user_agg.event_handler("on_user_turn_started")
     async def _on_turn_started(aggregator, *args):

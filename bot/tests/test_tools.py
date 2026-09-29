@@ -19,7 +19,7 @@ def ctx(settings, php, twilio):
 def test_schema_exposes_all_tools():
     names = {t.name for t in build_tools_schema().standard_tools}
     assert names == set(TOOL_HANDLERS) == {
-        "get_company_info", "check_availability", "book_appointment", "commercial_handoff"}
+        "get_company_info", "check_availability", "book_appointment", "commercial_handoff", "end_call"}
 
 
 async def test_company_info(ctx, php_recorder):
@@ -161,9 +161,11 @@ class _Params:
         self.arguments = arguments
         self.context = type("Ctx", (), {"get_messages": lambda _s: messages})()
         self.result = None
+        self.properties = None
 
-    async def result_callback(self, result):
+    async def result_callback(self, result, properties=None):
         self.result = result
+        self.properties = properties
 
 
 async def test_handoff_refused_in_same_turn_as_tool_failure(ctx, php_recorder, fake_rest):
@@ -192,3 +194,34 @@ async def test_handoff_on_request_without_failure_is_immediate(ctx, php_recorder
     p = _Params({"reason": "quiere hablar con una persona"}, [{"role": "user", "content": "Pásame con alguien"}])
     await _dispatch(handlers.commercial_handoff, ctx, p)
     assert p.result["ok"] is True and ctx.transferred is True
+
+
+async def test_end_call_speaks_goodbye_and_hangs_up_without_new_llm_turn(ctx):
+    from src.tools import _dispatch
+
+    spoken = []
+
+    async def say_and_hang_up(text):
+        spoken.append(text)
+
+    ctx.say_and_hang_up = say_and_hang_up
+    p = _Params({}, [{"role": "user", "content": "No, nada más, gracias"}])
+    await _dispatch(handlers.end_call, ctx, p)
+    assert p.result["ok"] is True and ctx.ended is True
+    assert p.properties is not None and p.properties.run_llm is False
+    assert spoken == [handlers.FAREWELL]
+
+
+async def test_end_call_after_transfer_does_nothing(ctx):
+    from src.tools import _dispatch
+
+    spoken = []
+
+    async def say_and_hang_up(text):
+        spoken.append(text)
+
+    ctx.say_and_hang_up = say_and_hang_up
+    ctx.transferred = True
+    p = _Params({}, [{"role": "user", "content": "Adiós"}])
+    await _dispatch(handlers.end_call, ctx, p)
+    assert p.result["ok"] is False and not spoken and ctx.ended is False

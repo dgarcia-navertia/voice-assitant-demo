@@ -56,6 +56,7 @@ fecha y hora actuales (Madrid) y, en llamadas **salientes**, el teléfono de la 
 | `check_availability(store_id, date)` | Huecos libres (`GET /mcp/availability`), sin duplicados ni horas pasadas. |
 | `book_appointment(client_name, store_id, date, time, client_email?, phone?)` | Valida datos, busca al cliente por teléfono, lo crea si es nuevo y crea la cita (`409` -> `slot_taken`). El correo es opcional. |
 | `commercial_handoff(reason, caller_name?, store_id?, mode warm/cold)` | Registra el lead en PHP **y** transfiere la llamada real por Twilio (ver abajo). |
+| `end_call()` | Cuando la persona se despide o dice que no necesita nada más: dice una despedida fija y cuelga (ver abajo). |
 
 Los errores se devuelven al LLM como `{"ok": false, "message": "..."}`, nunca como excepciones.
 
@@ -76,6 +77,13 @@ hablar con alguien, sin fallo previo, se transfiere directamente.
    nadie contesta. Solo funciona si el `call_sid` empieza por `CA` (no en WebRTC) y hay algún número (PHP o `HANDOFF_PHONE_NUMBER`).
 3. `auto_hang_up` del serializador está **desactivado a propósito**: si no, colgaría también la llamada recién
    transferida. El bot cuelga por REST al terminar salvo que la llamada se haya transferido.
+
+### Fin de la llamada (`end_call`)
+
+El LLM llama a `end_call` cuando la persona dice claramente que ha terminado ("no, nada más", "adiós"); nunca tras un
+"sí". `_dispatch` devuelve el resultado **sin** un nuevo turno del LLM (`FunctionCallResultProperties(run_llm=False)`)
+y encola `TTSSpeakFrame(FAREWELL)` + `EndFrame` (lo mismo que la inactividad): la despedida se oye entera, el pipeline
+se cierra y `_finish_call` guarda la transcripción y cuelga por REST. Tras una transferencia no hace nada.
 
 ### Inactividad
 
@@ -106,4 +114,4 @@ make up && make migrate seed
 # Con Twilio: make tunnel  (ver DESPLIEGUE.md), configura el webhook y usa Dial Out.
 ```
 
-Tests: `make test-bot` (pytest, 42 casos con proveedores y Twilio simulados).
+Tests: `make test-bot` (pytest, 49 casos con proveedores y Twilio simulados).

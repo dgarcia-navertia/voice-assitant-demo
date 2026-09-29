@@ -7,6 +7,7 @@ from typing import Any
 
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
+from pipecat.frames.frames import FunctionCallResultProperties
 from pipecat.services.llm_service import FunctionCallParams
 
 from src.tools import handlers
@@ -17,6 +18,7 @@ TOOL_HANDLERS = {
     "check_availability": handlers.check_availability,
     "book_appointment": handlers.book_appointment,
     "commercial_handoff": handlers.commercial_handoff,
+    "end_call": handlers.end_call,
 }
 
 
@@ -72,6 +74,16 @@ def build_tools_schema() -> ToolsSchema:
                 },
                 required=["reason"],
             ),
+            FunctionSchema(
+                name="end_call",
+                description=(
+                    "Termina la llamada: dice una despedida fija y cuelga. Úsala solo cuando la persona diga "
+                    "claramente que no necesita nada más o se despida; nunca tras un \"sí\". "
+                    "No digas nada tú: la herramienta ya se despide."
+                ),
+                properties={},
+                required=[],
+            ),
         ]
     )
 
@@ -89,6 +101,11 @@ async def _dispatch(fn: Any, ctx: ToolContext, params: FunctionCallParams) -> No
     result = await fn(ctx, **(params.arguments or {}))
     if isinstance(result, dict) and result.get("ok") is False and fn is not handlers.commercial_handoff:
         ctx.tool_failed_turn = ctx.user_turns
+    if isinstance(result, dict) and result.get("hang_up"):
+        # No new LLM turn: the fixed goodbye is spoken, then EndFrame closes the call.
+        await params.result_callback(result, properties=FunctionCallResultProperties(run_llm=False))
+        await ctx.say_and_hang_up(handlers.FAREWELL)
+        return
     await params.result_callback(result)
 
 

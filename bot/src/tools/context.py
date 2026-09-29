@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -25,6 +26,9 @@ class ToolContext:
     # in that same turn is refused: the caller must be asked first (see handlers).
     user_turns: int = 0
     tool_failed_turn: int | None = None
+    # Set by the pipeline: speaks a goodbye and then ends the call (see end_call).
+    say_and_hang_up: Callable[[str], Awaitable[None]] | None = field(default=None, repr=False)
+    ended: bool = False
     _now: datetime | None = field(default=None, repr=False)
 
     def now(self) -> datetime:
