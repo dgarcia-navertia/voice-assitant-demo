@@ -159,8 +159,8 @@ async def twilio_ws(websocket: WebSocket) -> None:
     await websocket.accept()
     try:
         transport_type, call_data = await parse_telephony_websocket(websocket)
-    except Exception:
-        logger.exception("Invalid telephony websocket handshake")
+    except Exception as exc:  # cierre prematuro, sondeos, clientes que no son Twilio
+        logger.warning("Invalid telephony websocket handshake: {}", exc)
         await websocket.close()
         return
     if transport_type != "twilio":
