@@ -1,5 +1,8 @@
 # Despliegue
 
+La URL pública de la demo es **https://demo-llamada.navertia.com** (despliegue de producción con Caddy).
+El túnel (`make tunnel`) es **solo para pruebas en local**; nunca es la URL pública.
+
 ## Desarrollo
 
 ```bash
@@ -10,9 +13,10 @@ make migrate seed           # esquema y datos de demo
 
 `make up` levanta `php` (8090), `db` (3316), `phpmyadmin` (8091) y `bot` (7860). Comandos en `make help`.
 
-## Probar Twilio en local: `make tunnel`
+## Probar Twilio en local: `make tunnel` (solo testing)
 
-Twilio necesita una URL pública HTTPS. `make tunnel` ejecuta `scripts/tunnel.sh`, que:
+Twilio necesita una URL pública HTTPS. Para probar desde una máquina de desarrollo, sin tocar el despliegue real,
+`make tunnel` ejecuta `scripts/tunnel.sh`, que:
 
 1. arranca **cloudflared** (sin cuenta) en un contenedor conectado a la red del compose, apuntando a `bot:7860`
    (`TUNNEL=ngrok make tunnel` usa ngrok; requiere `NGROK_AUTHTOKEN`);
@@ -20,11 +24,13 @@ Twilio necesita una URL pública HTTPS. `make tunnel` ejecuta `scripts/tunnel.sh
 3. recrea el bot para que la use y muestra el webhook a configurar: `POST {URL}/twilio/voice`.
 
 Después, en *Dial Out* la llamada saliente ya usa `wss://…/ws` alcanzable por Twilio. Ctrl+C cierra el túnel.
+La URL `trycloudflare.com` es temporal (cambia en cada ejecución): no la uses como webhook del número de la demo,
+que debe seguir apuntando a `https://demo-llamada.navertia.com/twilio/voice`.
 Cuidado: las llamadas reales **cuestan dinero**; las pruebas automáticas usan siempre un bot simulado.
 
 ## Producción (`docker-compose.prod.yml`)
 
-Un solo dominio (`APP_DOMAIN`) con TLS automático de Let's Encrypt (Caddy):
+Un solo dominio, `APP_DOMAIN=demo-llamada.navertia.com`, con TLS automático de Let's Encrypt (Caddy):
 
 | Ruta pública | Destino |
 |--------------|---------|
@@ -42,8 +48,9 @@ antes de `php`) y **sin phpMyAdmin**. Cabeceras de seguridad (HSTS, `nosniff`, `
 
 ### Pasos
 
-1. DNS: registro A/AAAA de `APP_DOMAIN` al servidor; puertos 80 y 443 abiertos.
-2. `.env` de producción: `APP_DOMAIN`, `ACME_EMAIL`, `PUBLIC_BASE_URL=https://$APP_DOMAIN`, contraseñas de BD
+1. DNS: registro A/AAAA de `demo-llamada.navertia.com` al servidor; puertos 80 y 443 abiertos.
+2. `.env` de producción: `APP_DOMAIN=demo-llamada.navertia.com`, `ACME_EMAIL`,
+   `PUBLIC_BASE_URL=https://demo-llamada.navertia.com`, contraseñas de BD
    fuertes, `INTERNAL_API_TOKEN` (`openssl rand -hex 32`), claves de Twilio / Deepgram / ElevenLabs / LLM,
    `HANDOFF_PHONE_NUMBER`, `APP_ENV=production`.
 3. `make prod-up` (equivale a `docker compose -f docker-compose.prod.yml --env-file .env up -d --build --wait`).
@@ -54,7 +61,7 @@ antes de `php`) y **sin phpMyAdmin**. Cabeceras de seguridad (HSTS, `nosniff`, `
    actualiza nombre, rol (`admin`) y contraseña en lugar de duplicar. En desarrollo existe `make admin`.
    El número de traspaso inicial sale de `HANDOFF_PHONE_NUMBER`; después se edita en el panel (*Ajustes → Traspaso*),
    ver [CALENDARIO.md](CALENDARIO.md).
-5. En Twilio: webhook de voz del número -> `https://APP_DOMAIN/twilio/voice` (POST).
+5. En Twilio: webhook de voz del número -> `https://demo-llamada.navertia.com/twilio/voice` (POST).
 
 Notas: las sesiones PHP viven en un `tmpfs` (se pierden al reiniciar el contenedor `php`); `WEBRTC` se desactiva
 (`ENABLE_WEBRTC=false`); para probar prod en una máquina con 80/443 ocupados se pueden definir `HTTP_PORT`/`HTTPS_PORT`
