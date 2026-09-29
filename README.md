@@ -43,6 +43,7 @@ Configura el webhook de voz del número en `https://<url-del-túnel>/twilio/voic
 | `make test` | PHPUnit + pytest + Playwright |
 | `make tunnel` | túnel público al bot |
 | `make prod-up` | producción detrás del Traefik del VPS |
+| `make prod-seed` | datos mínimos de producción (tiendas, comerciales…; ver docs/DESPLIEGUE.md) |
 
 ## Notas
 

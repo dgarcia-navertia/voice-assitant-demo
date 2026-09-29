@@ -6,7 +6,7 @@ PHP 8.4 con MVC propio (sin framework), Apache, MariaDB, Phinx y Tailwind. Códi
 app/            Controllers/ Models/ Services/ Middlewares/ Views/ + Router, Auth, Env, Database
 config/routes.php
 db/migrations/  baseline completo + voice_demo_tables
-db/seeds/       Settings, Services, Stores, Staff, Clients, ApiKeys, DemoActivity
+db/seeds/       Settings, Services, Stores, Staff, Clients, ApiKeys, DemoActivity, ProdCommercials (prod-seed)
 public/         index.php, .htaccess, static/ (logo, banderas, JS; app.css se genera)
 tests/Unit/     PHPUnit
 ../assets/      app.css (fuente) + tailwind.config.js

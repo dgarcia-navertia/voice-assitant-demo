@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help env up down restart build ps logs shell-php composer-install css migrate seed fresh \
-        test test-php test-e2e test-bot tunnel prod-build prod-up prod-down prod-logs prod-ps prod-migrate prod-admin admin
+        test test-php test-e2e test-bot tunnel prod-build prod-up prod-down prod-logs prod-ps prod-migrate prod-seed prod-admin admin
 
 DC      = docker compose
 DC_PROD = docker compose -f docker-compose.prod.yml --env-file .env
@@ -91,6 +91,14 @@ prod-ps: ## Estado de produccion
 
 prod-migrate: ## Relanza las migraciones en produccion
 	$(DC_PROD) run --rm migrate
+
+# Solo seeders sin credenciales conocidas y que no pisan usuarios existentes, en
+# este orden (Phinx con -s no resuelve dependencias). Nunca StaffSeeder,
+# ClientsSeeder ni DemoActivitySeeder: ver docs/DESPLIEGUE.md.
+PROD_SEEDERS = StoresSeeder ServicesSeeder SettingsSeeder ApiKeysSeeder ProdCommercialsSeeder
+
+prod-seed: ## Siembra en PRODUCCION tiendas, servicio, ajustes y comerciales (idempotente, sin contrasenas)
+	$(DC_PROD) run --rm migrate php vendor/bin/phinx seed:run $(addprefix -s ,$(PROD_SEEDERS))
 
 prod-admin: ## Crea/actualiza el primer admin en PRODUCCION (interactivo, idempotente)
 	./scripts/create-admin.sh prod

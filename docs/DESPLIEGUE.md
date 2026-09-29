@@ -72,14 +72,47 @@ publicados**, migraciones automáticas (`migrate` se ejecuta antes de `php`) y *
    fuertes, `INTERNAL_API_TOKEN` (`openssl rand -hex 32`), claves de Twilio / Deepgram / ElevenLabs / LLM,
    `HANDOFF_PHONE_NUMBER`, `APP_ENV=production`.
 4. `make prod-up` (equivale a `docker compose -f docker-compose.prod.yml --env-file .env up -d --build --wait`).
-5. Crear el primer administrador con **`make prod-admin`**. Los seeders de desarrollo **no** se ejecutan en
-   producción (traen una contraseña pública). El comando es interactivo: pide email, nombre y contraseña (12-24
+5. Crear el primer administrador con **`make prod-admin`**. El comando es interactivo: pide email, nombre y contraseña (12-24
    caracteres, sin eco, confirmada dos veces) y la envía por stdin al script `calendar/src/scripts/create-admin.php`
    dentro del contenedor `php`; nunca pasa por argumentos ni por el historial. Es idempotente: si el email ya existe,
    actualiza nombre, rol (`admin`) y contraseña en lugar de duplicar. En desarrollo existe `make admin`.
    El número de traspaso inicial sale de `HANDOFF_PHONE_NUMBER`; después se edita en el panel (*Ajustes → Traspaso*),
    ver [CALENDARIO.md](CALENDARIO.md).
-6. En Twilio: webhook de voz del número -> `https://demo-llamada.navertia.com/twilio/voice` (POST).
+6. Sembrar los datos mínimos con **`make prod-seed`** (tiendas, horarios, servicio, ajustes y comerciales; ver
+   [Datos iniciales](#datos-iniciales-make-prod-seed)). **Sin este paso el bot no puede reservar**: `GET /mcp/stores`
+   devuelve una lista vacía y el asistente acaba pasando la llamada a un asesor. Comprobación:
+   `docker compose -p navertia-prod exec db sh -c 'mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e "select count(*) from stores; select count(*) from commercials"'`
+   debe dar 3 y 4.
+7. En Twilio: webhook de voz del número -> `https://demo-llamada.navertia.com/twilio/voice` (POST).
+
+### Datos iniciales (`make prod-seed`)
+
+`make prod-up` solo aplica migraciones: la base de producción arranca **vacía** (sin tiendas, comerciales,
+servicio ni ajustes). `make prod-seed` ejecuta, en este orden y dentro del contenedor `migrate`, solo los seeders
+seguros para producción:
+
+| Seeder | Qué crea |
+|--------|----------|
+| `StoresSeeder` | 3 tiendas de demo (ids 1-3) y sus horarios |
+| `ServicesSeeder` | el servicio "Cita comercial" (30 min) |
+| `SettingsSeeder` | intervalo y duración de cita; número de traspaso inicial desde `HANDOFF_PHONE_NUMBER` (no pisa el editado en el panel) |
+| `ApiKeysSeeder` | registra `INTERNAL_API_TOKEN` en `api_keys` (auditable) |
+| `ProdCommercialsSeeder` | los 4 comerciales de demo con su tienda y horario semanal |
+
+Es idempotente: se puede relanzar tras cada despliegue sin duplicar nada. `ProdCommercialsSeeder` identifica a
+cada comercial por **email** (no por id) y les pone una contraseña **aleatoria que no se guarda**: sirven para
+recibir citas, no para entrar; si alguno necesita acceso, un admin le pone contraseña desde *Usuarios*.
+
+**Nunca** ejecutes `make seed` ni `phinx seed:run` sin `-s` en producción:
+
+- `StaffSeeder` usa ids fijos 1-6: **sobrescribiría los admins reales** creados con `make prod-admin` (ids 1 y 2) y
+  crea cuentas con la contraseña pública de [CREDENTIALS.md](CREDENTIALS.md).
+- `ClientsSeeder` y `DemoActivitySeeder` meten clientes, citas, una llamada y un lead ficticios.
+
+`make seed` además usa el compose de desarrollo, así que en el VPS no llega al stack `navertia-prod`. Con
+`seed:run -s` Phinx ejecuta solo los seeders indicados, sin resolver dependencias; por eso `StaffSeeder` nunca se
+lanza desde `prod-seed`. Si las tiendas se crean a mano en el panel en lugar de con este comando, `StoresSeeder`
+(ids 1-3) sobrescribiría las que ocupen esos ids.
 
 Notas: las sesiones PHP viven en un `tmpfs` (se pierden al reiniciar el contenedor `php`); `WEBRTC` se desactiva
 (`ENABLE_WEBRTC=false`).

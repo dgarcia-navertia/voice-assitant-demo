@@ -1,8 +1,9 @@
 # Credenciales de desarrollo
 
 > **SOLO DESARROLLO.** Estas cuentas las crea `make seed` con una contraseña publicada en
-> este repositorio. No ejecutes los seeders en producción (el despliegue `prod` no lo hace) y,
-> si tienes que sembrar algo en un servidor real, cambia antes `SEED_USER_PASSWORD` en `.env`.
+> este repositorio. En producción usa solo `make prod-seed` (tiendas, servicio, ajustes y comerciales sin
+> contraseña conocida; ver [DESPLIEGUE.md](DESPLIEGUE.md#datos-iniciales-make-prod-seed)): nunca `make seed`, que
+> además sobrescribiría los admins reales.
 
 Contraseña común de todos los usuarios sembrados (variable `SEED_USER_PASSWORD`, valor por
 defecto de `.env.example`):

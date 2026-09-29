@@ -27,6 +27,7 @@ make tunnel            # túnel HTTPS (cloudflared) al bot para Twilio en local
 make admin             # crea/actualiza un admin (dev, interactivo)
 make prod-admin        # ídem en producción (primer admin; ver DESPLIEGUE.md)
 make prod-up           # producción tras el Traefik del VPS, ver docs/DESPLIEGUE.md
+make prod-seed         # datos mínimos en prod (nunca `make seed` allí: pisa los admins)
 ```
 
 ## Reglas del proyecto
