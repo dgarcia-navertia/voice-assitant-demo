@@ -1,5 +1,5 @@
 # DESARROLLO: php + mariadb + phpmyadmin + bot. Un unico .env en la raiz.
-# Ver docker-compose.prod.yml para el despliegue (Caddy + TLS).
+# Ver docker-compose.prod.yml para el despliegue (Traefik del VPS + TLS).
 name: navertia-voice-demo
 
 services:

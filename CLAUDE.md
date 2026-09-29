@@ -9,7 +9,7 @@ Demo de un **asistente de voz de reservas en español** para Navertia. Monorepo 
 calendar/   PHP 8.4 MVC propio (sin framework) + Apache + MariaDB + Phinx + Tailwind
   src/{app,config,public,db/{migrations,seeds}}   tests/ (Playwright)   src/tests/Unit (PHPUnit)
 bot/        Pipecat 1.12.0 + FastAPI + uv     src/{server,pipeline.py,prompts,tools,clients,config}  tests/
-caddy/      Caddy (solo prod)        scripts/tunnel.sh      docs/      openspec/
+scripts/tunnel.sh      docs/      openspec/
 ```
 
 Documentación: `docs/ARQUITECTURA.md`, `CALENDARIO.md`, `BOT.md`, `DESPLIEGUE.md`, `PRUEBAS.md`,
@@ -26,7 +26,7 @@ make css               # recompila Tailwind tras tocar vistas/CSS
 make tunnel            # túnel HTTPS (cloudflared) al bot para Twilio en local
 make admin             # crea/actualiza un admin (dev, interactivo)
 make prod-admin        # ídem en producción (primer admin; ver DESPLIEGUE.md)
-make prod-up           # producción (Caddy + TLS), ver docs/DESPLIEGUE.md
+make prod-up           # producción tras el Traefik del VPS, ver docs/DESPLIEGUE.md
 ```
 
 ## Reglas del proyecto

@@ -1,12 +1,14 @@
-# PRODUCCION. Solo Caddy publica puertos (80/443, TLS automatico). PHP y el bot
-# quedan en redes internas; la base de datos no es alcanzable desde fuera; no
-# hay phpMyAdmin. Imagenes multi-stage, procesos no root, healthchecks y
-# restart automatico.
+# PRODUCCION detras del Traefik compartido del VPS (repo srv1576694.hstgr.cloud).
+# Ningun servicio publica puertos: Traefik (80/443, TLS de Let's Encrypt) enruta
+# por labels a php y bot a traves de la red externa `web`. La base de datos solo
+# esta en `backend` (interna); no hay phpMyAdmin. Imagenes multi-stage, procesos
+# no root, healthchecks y restart automatico.
 #
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
-# Requisitos: APP_DOMAIN apuntando (DNS A/AAAA) al servidor, puertos 80/443
-# abiertos, PUBLIC_BASE_URL=https://$APP_DOMAIN y el resto de secretos en .env.
+# Requisitos: Traefik del VPS arriba (crea la red `web`), DNS A de
+# demo-llamada.navertia.com al VPS, PUBLIC_BASE_URL=https://demo-llamada.navertia.com
+# y el resto de secretos en .env.
 name: navertia-prod
 
 x-logging: &logging
@@ -15,42 +17,16 @@ x-logging: &logging
     max-size: "10m"
     max-file: "3"
 
-services:
-  caddy:
-    build:
-      context: ./caddy
-    restart: unless-stopped
-    ports:
-      # En un servidor real dejar 80/443 (ACME lo necesita). Los puertos son
-      # parametrizables solo para probar en una maquina con 80/443 ocupados.
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-      - "${HTTPS_PORT:-443}:443/udp"
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN es obligatorio}
-      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL es obligatorio}
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks: [edge]
-    depends_on:
-      php:
-        condition: service_healthy
-      bot:
-        condition: service_healthy
-    read_only: true
-    tmpfs: [/tmp]
-    cap_drop: [ALL]
-    cap_add: [NET_BIND_SERVICE]
-    security_opt: ["no-new-privileges:true"]
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    logging: *logging
+# La red `web` la comparten otros stacks (p. ej. la agenda tambien tiene un
+# servicio `php`): los nombres cortos `php`/`bot`/`db` serian ambiguos. Por eso
+# los servicios se hablan por alias unicos en `backend` y estas URLs pisan las
+# del .env.
+x-internal-env: &internal-env
+  DB_HOST: demo-llamada-db
+  PHP_API_BASE_URL: http://demo-llamada-php:8080
+  BOT_BASE_URL: http://demo-llamada-bot:7860
 
+services:
   php:
     build:
       context: ./calendar
@@ -58,8 +34,12 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      <<: *internal-env
       APP_ENV: production
-    networks: [edge, backend]
+    networks:
+      web: {}
+      backend:
+        aliases: [demo-llamada-php]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -76,6 +56,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      # Obligatorio: el servicio esta en dos redes (web + backend) y sin esta
+      # label Traefik puede elegir la IP de `backend` y devolver 504.
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.demo-llamada-php.rule=Host(`${APP_DOMAIN:?APP_DOMAIN es obligatorio}`)"
+      - "traefik.http.routers.demo-llamada-php.entrypoints=websecure"
+      - "traefik.http.routers.demo-llamada-php.tls.certresolver=le"
+      - "traefik.http.routers.demo-llamada-php.middlewares=demo-llamada-secheaders@docker"
+      - "traefik.http.services.demo-llamada-php.loadbalancer.server.port=8080"
+      # Cabeceras de seguridad (antes en el Caddyfile). Nombre propio para no
+      # chocar con el `secheaders` de otros stacks del VPS.
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.frameDeny=true"
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.demo-llamada-secheaders.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()"
     logging: *logging
 
   # Aplica las migraciones de Phinx y termina. Los seeders de desarrollo
@@ -86,6 +84,7 @@ services:
       dockerfile: docker/Dockerfile.prod
     restart: "no"
     env_file: .env
+    environment: *internal-env
     command: ["php", "vendor/bin/phinx", "migrate"]
     networks: [backend]
     depends_on:
@@ -102,9 +101,14 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      <<: *internal-env
       # El cliente de prueba de WebRTC no se expone en produccion.
       ENABLE_WEBRTC: "false"
-    networks: [edge, backend]
+    # `web` tambien le da salida a Internet (Twilio, Deepgram, ElevenLabs, LLM).
+    networks:
+      web: {}
+      backend:
+        aliases: [demo-llamada-bot]
     depends_on:
       php:
         condition: service_healthy
@@ -118,6 +122,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Solo /ws (Media Streams, wss) y /twilio/* (webhooks). POST /dial-out NO
+      # se publica: lo llama PHP por `backend`. Prioridad por encima del router
+      # de php, que casa con todo el dominio.
+      - "traefik.http.routers.demo-llamada-bot.rule=Host(`${APP_DOMAIN:?APP_DOMAIN es obligatorio}`) && (Path(`/ws`) || PathPrefix(`/ws/`) || PathPrefix(`/twilio/`))"
+      - "traefik.http.routers.demo-llamada-bot.priority=100"
+      - "traefik.http.routers.demo-llamada-bot.entrypoints=websecure"
+      - "traefik.http.routers.demo-llamada-bot.tls.certresolver=le"
+      - "traefik.http.routers.demo-llamada-bot.middlewares=demo-llamada-secheaders@docker"
+      - "traefik.http.services.demo-llamada-bot.loadbalancer.server.port=7860"
     logging: *logging
 
   db:
@@ -130,7 +146,9 @@ services:
       MARIADB_PASSWORD: ${DB_PASSWORD:?obligatorio}
     volumes:
       - db_data:/var/lib/mysql
-    networks: [backend]
+    networks:
+      backend:
+        aliases: [demo-llamada-db]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]
     security_opt: ["no-new-privileges:true"]
@@ -144,12 +162,13 @@ services:
 
 volumes:
   db_data:
-  caddy_data:
-  caddy_config:
 
 networks:
-  # edge: Caddy <-> php/bot. backend: php/bot/migrate <-> db (sin salida a Internet
-  # para la base de datos: la red es interna).
-  edge:
+  # web: red externa compartida con Traefik y el resto de stacks del VPS (la
+  # crea el repo de Traefik: `docker network create web`; este compose no la
+  # crea ni la destruye). backend: php/bot/migrate <-> db, interna (sin salida a
+  # Internet).
+  web:
+    external: true
   backend:
     internal: true

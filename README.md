@@ -42,7 +42,7 @@ Configura el webhook de voz del número en `https://<url-del-túnel>/twilio/voic
 | `make css` | compila Tailwind |
 | `make test` | PHPUnit + pytest + Playwright |
 | `make tunnel` | túnel público al bot |
-| `make prod-up` | producción con Caddy y TLS automático |
+| `make prod-up` | producción detrás del Traefik del VPS |
 
 ## Notas
 

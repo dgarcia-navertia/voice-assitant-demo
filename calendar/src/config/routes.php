@@ -31,7 +31,7 @@ $auth  = [AuthMiddleware::class];
 $admin = [AuthMiddleware::class, AdminMiddleware::class];
 $adminOrManager = [AuthMiddleware::class, AdminOrManagerMiddleware::class];
 
-// Sondeo de salud (Docker / Caddy). Publico y sin base de datos.
+// Sondeo de salud (Docker / Traefik). Publico y sin base de datos.
 $router->add('GET', '/health', [HealthController::class, 'index']);
 
 // Root + auth

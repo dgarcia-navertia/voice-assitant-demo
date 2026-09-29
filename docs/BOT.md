@@ -85,7 +85,7 @@ silencio del usuario (el temporizador se suprime durante llamadas a herramientas
 | `GET /health` | Sondeo de salud. |
 | `WS /ws` | Media Stream de Twilio. `sid` de transcripción = `CallSid`. |
 | `POST /twilio/voice` | Webhook de llamada **entrante**: responde TwiML `<Connect><Stream url="wss://PUBLIC_BASE_URL/ws">`. Valida `X-Twilio-Signature`. |
-| `POST /dial-out` | `Authorization: Bearer INTERNAL_API_TOKEN`, cuerpo `{"to": "+34…"}` (E.164). Crea la llamada por REST de Twilio con `statusCallback`. Devuelve `{call_sid, status:"queued", to}`. 401/422/502/503. **No se expone por Caddy**: solo PHP lo llama por la red interna. |
+| `POST /dial-out` | `Authorization: Bearer INTERNAL_API_TOKEN`, cuerpo `{"to": "+34…"}` (E.164). Crea la llamada por REST de Twilio con `statusCallback`. Devuelve `{call_sid, status:"queued", to}`. 401/422/502/503. **No se publica en Traefik**: solo PHP lo llama por la red interna. |
 | `POST /twilio/status` | Callback de estado de Twilio (firma validada). Traduce (`initiated`→`queued`…) y reenvía a PHP `POST /mcp/calls/status`; si PHP no responde, devuelve 200 con `relayed:false`. |
 | `POST/PATCH /api/offer`, `/client/`, `/webrtc` | Solo con `ENABLE_WEBRTC=true`: prueba local en navegador con SmallWebRTC (sin Twilio). |
 

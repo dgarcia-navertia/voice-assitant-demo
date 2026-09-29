@@ -8,7 +8,7 @@ servicios en un monorepo, con un único `.env` en la raíz.
  Teléfono <-> Twilio |  wss:// /ws  · webhooks     |
                     +--------------+--------------+
                                    |
-                    [Caddy, solo prod: TLS automático]
+                    [Traefik del VPS, solo prod: TLS]
                        |                        |
               /ws, /twilio/*                todo lo demás
                        v                        v

@@ -73,7 +73,7 @@ test-e2e: ## Playwright e2e en Docker (necesita el stack, migraciones y seeds)
 tunnel: ## Tunel HTTPS publico al bot (cloudflared; TUNNEL=ngrok para ngrok)
 	./scripts/tunnel.sh
 
-# --- Produccion (Caddy + TLS) ----------------------------------------------------------
+# --- Produccion (Traefik del VPS) -------------------------------------------------------
 prod-build: ## Construye las imagenes de produccion
 	$(DC_PROD) build
 
