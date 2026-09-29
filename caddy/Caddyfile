@@ -1,0 +1,50 @@
+# Punto de entrada unico (TLS automatico con Let's Encrypt).
+#   /ws, /twilio/*  -> bot   (WebSocket wss:// de Twilio Media Streams + webhooks)
+#   todo lo demas   -> php   (panel de calendario)
+# POST /dial-out del bot NO se expone: solo lo llama PHP por la red interna.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	request_body {
+		max_size 2MB
+	}
+
+	@bot path /ws /ws/* /twilio/*
+	handle @bot {
+		# Caddy 2 proxya los WebSockets sin configuracion adicional.
+		reverse_proxy bot:7860 {
+			health_uri /health
+			health_interval 30s
+			# Una llamada dura minutos: no cortar el stream por inactividad del proxy.
+			transport http {
+				read_timeout 0
+				write_timeout 0
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy php:8080 {
+			health_uri /health
+			health_interval 30s
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

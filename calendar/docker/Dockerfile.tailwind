@@ -1,0 +1,18 @@
+# Tailwind CLI standalone (sin Node). Compila calendar/assets/app.css ->
+# calendar/src/public/static/app.css. Usado por `make css` (dev) y como
+# etapa de compilacion en Dockerfile.prod.
+FROM debian:bookworm-slim AS tailwind
+ARG TAILWIND_VERSION=3.4.17
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    case "${TARGETARCH:-amd64}" in arm64) arch=arm64;; *) arch=x64;; esac; \
+    base="https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}"; \
+    curl -fsSL -o /usr/local/bin/tailwindcss "${base}/tailwindcss-linux-${arch}"; \
+    curl -fsSL -o /tmp/sha256sums.txt "${base}/sha256sums.txt"; \
+    (cd /usr/local/bin && grep " \./tailwindcss-linux-${arch}$" /tmp/sha256sums.txt | sed "s#tailwindcss-linux-${arch}#tailwindcss#" | sha256sum -c -); \
+    chmod +x /usr/local/bin/tailwindcss
+WORKDIR /calendar
+ENTRYPOINT ["tailwindcss"]
+CMD ["-c", "assets/tailwind.config.js", "-i", "assets/app.css", "-o", "src/public/static/app.css", "--minify"]

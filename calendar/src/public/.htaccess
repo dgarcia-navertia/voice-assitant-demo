@@ -1,0 +1,9 @@
+# Apache no pasa la cabecera Authorization a PHP por defecto: la API interna
+# usa "Authorization: Bearer <token>".
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]

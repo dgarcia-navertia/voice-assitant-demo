@@ -1,0 +1,153 @@
+# PRODUCCION. Solo Caddy publica puertos (80/443, TLS automatico). PHP y el bot
+# quedan en redes internas; la base de datos no es alcanzable desde fuera; no
+# hay phpMyAdmin. Imagenes multi-stage, procesos no root, healthchecks y
+# restart automatico.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# Requisitos: APP_DOMAIN apuntando (DNS A/AAAA) al servidor, puertos 80/443
+# abiertos, PUBLIC_BASE_URL=https://$APP_DOMAIN y el resto de secretos en .env.
+name: navertia-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    build:
+      context: ./caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN es obligatorio}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL es obligatorio}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    depends_on:
+      php:
+        condition: service_healthy
+      bot:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  php:
+    build:
+      context: ./calendar
+      dockerfile: docker/Dockerfile.prod
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+    networks: [edge, backend]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/apache2
+      - /var/lock/apache2
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+
+  # Aplica las migraciones de Phinx y termina. Los seeders de desarrollo
+  # (usuarios con contrasena conocida) NO se ejecutan en produccion.
+  migrate:
+    build:
+      context: ./calendar
+      dockerfile: docker/Dockerfile.prod
+    restart: "no"
+    env_file: .env
+    command: ["php", "vendor/bin/phinx", "migrate"]
+    networks: [backend]
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  bot:
+    build:
+      context: ./bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # El cliente de prueba de WebRTC no se expone en produccion.
+      ENABLE_WEBRTC: "false"
+    networks: [edge, backend]
+    depends_on:
+      php:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7860/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logging
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?obligatorio}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?obligatorio}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    logging: *logging
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  # edge: Caddy <-> php/bot. backend: php/bot/migrate <-> db (sin salida a Internet
+  # para la base de datos: la red es interna).
+  edge:
+  backend:
+    internal: true

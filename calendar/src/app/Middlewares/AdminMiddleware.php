@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Middlewares;
+
+use App\Auth;
+
+class AdminMiddleware implements Middleware
+{
+    public function handle(): bool
+    {
+        if (!Auth::isAdmin()) {
+            http_response_code(403);
+            require __DIR__ . '/../Views/errors/403.php';
+            return false;
+        }
+        return true;
+    }
+}

@@ -1,0 +1,226 @@
+/*
+ * Hoja de estilos de Navertia. Fuente de src/public/static/app.css (generado,
+ * no versionado): `make css` la compila con Tailwind standalone en Docker.
+ *
+ * Estetica "liquid glass" estilo Apple: superficies translucidas con
+ * backdrop-filter, bordes suaves con brillo interior, pildoras redondeadas.
+ * Paleta:  primary #075056 · accent #DC3225 · ink #26180F · secondary #6A959A
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Tokens (RGB sin comas para poder usar <alpha-value>) ---------------- */
+:root {
+    --primary: 7 80 86;          /* #075056 */
+    --primary-hover: 5 62 67;
+    --primary-fg: 255 255 255;
+    --accent: 220 50 37;         /* #DC3225 */
+    --accent-hover: 188 38 27;
+    --ink: 38 24 15;             /* #26180F */
+    --secondary: 106 149 154;    /* #6A959A */
+    --surface: 255 255 255;
+
+    --glass-bg: rgba(255, 255, 255, 0.58);
+    --glass-bg-strong: rgba(255, 255, 255, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.65);
+    --glass-edge: rgba(7, 80, 86, 0.12);
+    --glass-shadow: 0 8px 32px rgba(7, 80, 86, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --glass-blur: blur(22px) saturate(180%);
+
+    --page-bg: #e9f1f1;
+    --blob-1: rgba(7, 80, 86, 0.28);
+    --blob-2: rgba(106, 149, 154, 0.35);
+    --blob-3: rgba(220, 50, 37, 0.14);
+
+    --gray-50: 246 244 242;  --gray-100: 238 234 231; --gray-200: 224 218 214;
+    --gray-300: 200 192 186; --gray-400: 150 140 133; --gray-500: 110 99 92;
+    --gray-600: 84 72 65;    --gray-700: 62 50 43;    --gray-800: 48 36 28;
+    --gray-900: 38 24 15;
+
+    --brand-50: 236 245 245;  --brand-100: 211 231 232; --brand-200: 178 210 213;
+    --brand-300: 106 149 154; --brand-400: 45 108 114;  --brand-500: 7 80 86;
+    --brand-600: 5 62 67;     --brand-700: 6 66 72;     --brand-800: 5 52 57;
+    --brand-900: 4 40 44;
+
+    --red-50: 254 242 242;   --red-100: 254 226 226;  --red-200: 254 202 202;
+    --red-500: 239 68 68;    --red-600: 220 38 38;    --red-700: 185 28 28;
+    --red-800: 153 27 27;
+    --green-50: 240 253 244; --green-100: 220 252 231; --green-200: 187 247 208;
+    --green-600: 22 163 74;  --green-700: 21 128 61;  --green-800: 22 101 52;
+    --amber-50: 255 251 235; --amber-100: 254 243 199; --amber-200: 253 230 138;
+    --amber-500: 245 158 11; --amber-600: 217 119 6;  --amber-700: 180 83 9;
+    --amber-800: 146 64 14;
+    --yellow-50: 254 252 232; --yellow-100: 254 249 195; --yellow-200: 254 240 138;
+    --yellow-700: 161 98 7;  --yellow-800: 133 77 14; --yellow-900: 113 63 18;
+    --purple-50: 250 245 255; --purple-100: 243 232 255; --purple-200: 233 213 255;
+    --purple-700: 126 34 206;
+}
+
+:root[data-theme='dark'] {
+    --primary: 42 132 139;       /* teal aclarado para fondos oscuros */
+    --primary-hover: 58 150 157;
+    --primary-fg: 255 255 255;
+    --accent: 232 72 58;
+    --accent-hover: 244 96 82;
+    --ink: 245 241 238;
+    --secondary: 106 149 154;
+    --surface: 38 24 15;
+
+    --glass-bg: rgba(38, 24, 15, 0.52);
+    --glass-bg-strong: rgba(38, 24, 15, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --glass-edge: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+
+    --page-bg: #150d08;
+    --blob-1: rgba(7, 80, 86, 0.55);
+    --blob-2: rgba(106, 149, 154, 0.22);
+    --blob-3: rgba(220, 50, 37, 0.20);
+
+    --gray-50: 43 31 23;     --gray-100: 53 40 31;    --gray-200: 78 63 52;
+    --gray-300: 104 88 76;   --gray-400: 142 128 117; --gray-500: 168 156 147;
+    --gray-600: 194 184 176; --gray-700: 214 206 199; --gray-800: 232 226 221;
+    --gray-900: 245 241 238;
+
+    --brand-50: 14 48 52;     --brand-100: 18 66 72;   --brand-200: 28 92 99;
+    --brand-300: 106 149 154; --brand-400: 132 178 183; --brand-500: 42 132 139;
+    --brand-600: 58 150 157;  --brand-700: 150 200 205; --brand-800: 180 219 223;
+    --brand-900: 210 236 238;
+
+    --red-50: 69 26 24;      --red-100: 90 32 29;     --red-200: 127 45 40;
+    --red-500: 248 113 113;  --red-600: 239 90 90;    --red-700: 252 165 160;
+    --red-800: 254 202 198;
+    --green-50: 20 50 34;    --green-100: 24 66 42;   --green-200: 34 96 60;
+    --green-600: 74 222 128; --green-700: 134 239 172; --green-800: 187 247 208;
+    --amber-50: 60 42 12;    --amber-100: 80 55 12;   --amber-200: 120 80 15;
+    --amber-500: 251 191 36; --amber-600: 252 211 77; --amber-700: 252 211 77;
+    --amber-800: 253 230 138;
+    --yellow-50: 58 48 10;   --yellow-100: 78 64 12;  --yellow-200: 110 90 14;
+    --yellow-700: 250 220 90; --yellow-800: 253 240 138; --yellow-900: 254 249 195;
+    --purple-50: 44 28 66;   --purple-100: 60 38 90;  --purple-200: 84 56 124;
+    --purple-700: 216 180 254;
+}
+
+@layer base {
+    html {
+        color-scheme: light;
+    }
+    html[data-theme='dark'] {
+        color-scheme: dark;
+    }
+
+    body {
+        @apply text-gray-900 antialiased;
+        background-color: var(--page-bg);
+        /* Manchas de color detras del cristal: sin algo que difuminar, el
+           cristal no se nota. */
+        background-image:
+            radial-gradient(60rem 40rem at 8% -5%, var(--blob-1), transparent 60%),
+            radial-gradient(50rem 40rem at 105% 10%, var(--blob-2), transparent 60%),
+            radial-gradient(45rem 35rem at 60% 110%, var(--blob-3), transparent 60%);
+        background-attachment: fixed;
+    }
+
+    [type]:focus, select:focus, textarea:focus {
+        --tw-ring-color: rgb(var(--primary));
+        border-color: rgb(var(--primary));
+    }
+    [type='checkbox'], [type='radio'] {
+        color: rgb(var(--primary));
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    /* Superficie de cristal base */
+    .glass {
+        background: var(--glass-bg);
+        -webkit-backdrop-filter: var(--glass-blur);
+        backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+    }
+    .glass-strong {
+        background: var(--glass-bg-strong);
+        -webkit-backdrop-filter: var(--glass-blur);
+        backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+    }
+
+    /* Menus emergentes dentro de otro cristal: casi opacos (un backdrop-filter
+       anidado no difumina), con el mismo borde y sombra. */
+    .glass-pop {
+        background: rgb(var(--surface) / 0.96);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 16px 48px rgba(7, 80, 86, 0.22);
+    }
+
+    .card {
+        @apply glass rounded-glass;
+    }
+
+    /* Botones: pildoras. Alto minimo de 44 px en todo lo pulsable. */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 min-h-[2.75rem] px-5 rounded-full
+               text-[15px] font-semibold whitespace-nowrap transition
+               focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent
+               active:scale-[0.98];
+    }
+    .btn-primary {
+        @apply bg-primary text-primary-fg hover:bg-primary-hover;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px rgba(7, 80, 86, 0.28);
+    }
+    .btn-accent {
+        @apply bg-accent text-white hover:bg-accent-hover;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px rgba(220, 50, 37, 0.30);
+    }
+    .btn-secondary {
+        @apply glass text-gray-800 hover:bg-white/80;
+    }
+    :root[data-theme='dark'] .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.10);
+    }
+    .btn-icon {
+        @apply btn btn-secondary px-0 w-11;
+    }
+
+    .label {
+        @apply block text-sm font-medium text-gray-700 mb-1.5;
+    }
+    /* 16 px de letra: con menos, el iPhone hace zoom al tocar el campo. */
+    .input {
+        @apply block w-full min-h-[2.75rem] rounded-full border-transparent text-base text-gray-900 placeholder:text-gray-400 px-5;
+        background: var(--glass-bg-strong);
+        -webkit-backdrop-filter: var(--glass-blur);
+        backdrop-filter: var(--glass-blur);
+        box-shadow: inset 0 1px 2px rgba(38, 24, 15, 0.08), 0 0 0 1px var(--glass-edge);
+    }
+    textarea.input, select[multiple].input {
+        @apply rounded-2xl py-3;
+    }
+    select.input {
+        @apply pr-10;
+    }
+
+    .pill {
+        @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+    }
+
+    /* Logo: dos variantes, se muestra la que contrasta con el tema. */
+    .logo-ondark { display: none; }
+    :root[data-theme='dark'] .logo-onlight { display: none; }
+    :root[data-theme='dark'] .logo-ondark { display: inline-block; }
+
+    .theme-sun { display: none; }
+    :root[data-theme='dark'] .theme-sun { display: inline-flex; }
+    :root[data-theme='dark'] .theme-moon { display: none; }
+
+    /* Tablas dentro de cristal */
+    .glass table { @apply w-full; }
+}

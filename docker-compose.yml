@@ -1,0 +1,126 @@
+# DESARROLLO: php + mariadb + phpmyadmin + bot. Un unico .env en la raiz.
+# Ver docker-compose.prod.yml para el despliegue (Caddy + TLS).
+name: navertia-voice-demo
+
+services:
+  php:
+    build:
+      context: ./calendar
+      dockerfile: docker/Dockerfile
+    env_file: .env
+    volumes:
+      - ./calendar/src:/var/www/html
+    ports:
+      - "${PHP_PORT:-8090}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-3316}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    environment:
+      PMA_HOST: db
+    ports:
+      - "${PHPMYADMIN_PORT:-8091}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: ./bot
+    env_file: .env
+    ports:
+      - "${BOT_PORT:-7860}:7860"
+    depends_on:
+      php:
+        condition: service_started
+
+  # --- Herramientas puntuales (perfiles; no arrancan con `up`) ----------------
+  composer:
+    profiles: ["tools"]
+    image: composer:2
+    working_dir: /app
+    volumes:
+      - ./calendar/src:/app
+      - composer_cache:/tmp/composer-cache
+    environment:
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
+      COMPOSER_HOME: /tmp/composer-home
+
+  tailwind:
+    profiles: ["tools"]
+    build:
+      context: ./calendar
+      dockerfile: docker/Dockerfile.tailwind
+    volumes:
+      - ./calendar:/calendar
+
+  # --- E2E: nunca toca al bot real (ni a Twilio) -------------------------------
+  # php-e2e es el mismo panel pero con BOT_BASE_URL apuntando a un bot simulado
+  # (calendar/tests/mock-bot.js), que responde a /dial-out y reporta estados.
+  php-e2e:
+    profiles: ["test"]
+    extends:
+      service: php
+    ports: !reset []
+    environment:
+      BOT_BASE_URL: http://mockbot:8000
+
+  mockbot:
+    profiles: ["test"]
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    working_dir: /tests
+    command: ["node", "mock-bot.js"]
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      PHP_BASE_URL: http://php-e2e
+    volumes:
+      - ./calendar/tests:/tests:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  e2e:
+    profiles: ["test"]
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    working_dir: /tests
+    ipc: host
+    environment:
+      BASE_URL: http://php-e2e
+      E2E_PASSWORD: ${SEED_USER_PASSWORD}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      CI: "1"
+    volumes:
+      - ./calendar/tests:/tests
+    depends_on:
+      php-e2e:
+        condition: service_healthy
+      mockbot:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  composer_cache:

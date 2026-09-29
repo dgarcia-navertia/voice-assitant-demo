@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+# Imagen de PRODUCCION del calendario. Multi-stage, sin Node, sin herramientas
+# de desarrollo, Apache como usuario NO root escuchando en el 8080.
+
+# --- 1. Dependencias PHP (sin dev) -------------------------------------------
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY src/composer.json src/composer.lock* ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --prefer-dist
+COPY src/ ./
+RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction
+
+# --- 2. CSS de Tailwind (compilado y minificado; no hay CDN en runtime) ---------
+FROM debian:bookworm-slim AS css
+ARG TAILWIND_VERSION=3.4.17
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    case "${TARGETARCH:-amd64}" in arm64) arch=arm64;; *) arch=x64;; esac; \
+    base="https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}"; \
+    curl -fsSL -o /usr/local/bin/tailwindcss "${base}/tailwindcss-linux-${arch}"; \
+    curl -fsSL -o /tmp/sha256sums.txt "${base}/sha256sums.txt"; \
+    (cd /usr/local/bin && grep " \./tailwindcss-linux-${arch}$" /tmp/sha256sums.txt | sed "s#tailwindcss-linux-${arch}#tailwindcss#" | sha256sum -c -); \
+    chmod +x /usr/local/bin/tailwindcss
+WORKDIR /calendar
+COPY assets/ assets/
+COPY src/app/Views/ src/app/Views/
+COPY src/public/static/js/app.js src/public/static/js/app.js
+RUN tailwindcss -c assets/tailwind.config.js -i assets/app.css -o /out/app.css --minify
+
+# --- 3. Runtime ------------------------------------------------------------------
+FROM php:8.4-apache AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libzip-dev \
+    && docker-php-ext-install pdo_mysql zip opcache \
+    && rm -rf /var/lib/apt/lists/* \
+    && a2enmod rewrite headers remoteip \
+    && a2dismod -f status autoindex >/dev/null
+
+COPY docker/apache-vhost.prod.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-prod.ini
+
+# Apache sin privilegios: puerto 8080, sin User/Group, pid y logs escribibles.
+RUN sed -ri 's/Listen 80$/Listen 8080/; s/Listen 443$/Listen 8443/' /etc/apache2/ports.conf \
+    && printf 'ServerTokens Prod\nServerSignature Off\nTraceEnable Off\nPidFile /tmp/apache2.pid\nErrorLog "|/bin/cat 1>&2"\n' > /etc/apache2/conf-enabled/zz-hardening.conf \
+    && sed -ri 's#^(export APACHE_RUN_USER=).*#\1www-data#; s#^(export APACHE_RUN_GROUP=).*#\1www-data#; s#^(export APACHE_PID_FILE=).*#\1/tmp/apache2.pid#' /etc/apache2/envvars \
+    && mkdir -p /var/lock/apache2 /var/run/apache2 \
+    && chown -R www-data:www-data /var/lock/apache2 /var/run/apache2 /var/log/apache2
+
+WORKDIR /var/www/html
+COPY --from=vendor --chown=root:root /app /var/www/html
+COPY --from=css /out/app.css /var/www/html/public/static/app.css
+# Codigo de solo lectura para el usuario de ejecucion (no puede reescribirse a si mismo).
+RUN chmod -R a=rX /var/www/html && chmod a+x /var/www/html/vendor/bin/* 2>/dev/null || true
+
+USER www-data
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 --start-period=20s \
+    CMD curl -fsS http://127.0.0.1:8080/health || exit 1
