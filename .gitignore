@@ -13,3 +13,4 @@ calendar/bin/
 node_modules/
 .phpunit.result.cache
 *.log
+calendar/src/public/static/app.css
